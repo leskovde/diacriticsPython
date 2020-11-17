@@ -82,7 +82,7 @@ model_names = "acdeinorstuyz"
 
 
 class ModelWrapper:
-    left_right_offset = 4
+    left_right_offset = 8
     separators = [" ", "\n", ",", "."]
 
     one_hot_values = [chr(i) for i in range(97, 123)] + separators
@@ -110,8 +110,29 @@ class ModelWrapper:
 
         return scrambled_sentence
 
+    @staticmethod
+    def flip_sentences(data):
+        data_added = []
+        lines = data.split('\n')
+        for line in lines:
+            parts = line.split()
+            only_words = [part for part in parts if part.isalpha()]
+            only_words.reverse()
+            i = 0
+            result = []
+            for part in parts:
+                if not part.isalpha():
+                    result.append(part)
+                else:
+                    result.append(only_words[i])
+                    i += 1
+            data_added.append(" ".join(result))
+
+        return "\n".join(data_added)
+
     def augment(self, data):
-        # data = data + self.scramble_sentences(data)
+        data = data + self.flip_sentences(data)
+        #data = data + self.scramble_sentences(data)
         no_dia_data = self.simplify(
             self.fill + data.translate(DIA_TO_NODIA) + self.fill)
 
@@ -327,6 +348,10 @@ class ModelWrapper:
             """
 
             models[letter] = mlp.fit(mlp_data_encoded, np.array(target[letter]))
+
+            models[letter]._optimizer = None
+            for i in range(len(models[letter].coefs_)): models[letter].coefs_[i] = models[letter].coefs_[i].astype(np.float16)
+            for i in range(len(models[letter].intercepts_)): models[letter].intercepts_[i] = models[letter].intercepts_[i].astype(np.float16)
 
             with lzma.open("model_" + model_names[i], "wb") as model_file:
                 pickle.dump(models[letter], model_file)
