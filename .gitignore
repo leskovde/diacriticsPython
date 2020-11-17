@@ -1,0 +1,4 @@
+model_*/model_*
+model_*/diacritization.model
+model_*/words_file
+tests/*_out

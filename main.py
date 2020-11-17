@@ -350,8 +350,8 @@ class ModelWrapper:
             models[letter] = mlp.fit(mlp_data_encoded, np.array(target[letter]))
 
             models[letter]._optimizer = None
-            for i in range(len(models[letter].coefs_)): models[letter].coefs_[i] = models[letter].coefs_[i].astype(np.float16)
-            for i in range(len(models[letter].intercepts_)): models[letter].intercepts_[i] = models[letter].intercepts_[i].astype(np.float16)
+            #for i in range(len(models[letter].coefs_)): models[letter].coefs_[i] = models[letter].coefs_[i].astype(np.float16)
+            #for i in range(len(models[letter].intercepts_)): models[letter].intercepts_[i] = models[letter].intercepts_[i].astype(np.float16)
 
             with lzma.open("model_" + model_names[i], "wb") as model_file:
                 pickle.dump(models[letter], model_file)
