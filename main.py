@@ -1,4 +1,9 @@
 #!/usr/bin/env python3
+
+# Team members:
+# ccf555c1-cba6-11e8-a4be-00505601122b
+# 8e5d388f-c72d-11e8-a4be-00505601122b
+
 import argparse
 import lzma
 import pickle
@@ -16,18 +21,18 @@ import sklearn.linear_model
 import sklearn.pipeline
 import sklearn.preprocessing
 
+LETTERS_NODIA = "acdeeinorstuuyz"
+LETTERS_DIA = "áčďéěíňóřšťúůýž"
+DIA_TO_NODIA = str.maketrans(LETTERS_DIA + LETTERS_DIA.upper(), LETTERS_NODIA + LETTERS_NODIA.upper())
+
 
 def split(name):
-    LETTERS_NODIA = "acdeeinorstuuyz"
-    LETTERS_DIA = "áčďéěíňóřšťúůýž"
-
-    DIA_TO_NODIA = str.maketrans(LETTERS_DIA + LETTERS_DIA.upper(), LETTERS_NODIA + LETTERS_NODIA.upper())
-
     with open(name, "r", encoding="utf-8") as dataset_file:
         target = dataset_file.read()
     data = target.translate(DIA_TO_NODIA)
 
     return data, target
+
 
 class Dataset:
     LETTERS_NODIA = "acdeeinorstuuyz"
@@ -53,7 +58,7 @@ class Dataset:
 
 parser = argparse.ArgumentParser()
 # These arguments will be set appropriately by ReCodEx, even if you change them.
-parser.add_argument("--predict", default=0, type=str, help="Run prediction on given data")
+parser.add_argument("--predict", default=None, type=str, help="Run prediction on given data")
 parser.add_argument("--recodex", default=False, action="store_true", help="Running in ReCodEx")
 parser.add_argument("--seed", default=42, type=int, help="Random seed")
 # For these and any other arguments you add, ReCodEx will keep your default value.
@@ -89,8 +94,6 @@ class ModelWrapper:
 
     fill = "".join([" " for i in range(left_right_offset)])
 
-    dataset = Dataset()
-
     def __init__(self):
         self.dictionary = {}
 
@@ -108,9 +111,9 @@ class ModelWrapper:
         return scrambled_sentence
 
     def augment(self, data):
-        data = data + self.scramble_sentences(data)
+        # data = data + self.scramble_sentences(data)
         no_dia_data = self.simplify(
-            self.fill + data.translate(self.dataset.DIA_TO_NODIA) + self.fill)
+            self.fill + data.translate(DIA_TO_NODIA) + self.fill)
 
         data = self.fill + (data + self.fill).lower()
         train = {}
@@ -147,7 +150,7 @@ class ModelWrapper:
                 continue
 
             unique_words.add(word)
-            stripped = word.translate(self.dataset.DIA_TO_NODIA)
+            stripped = word.translate(DIA_TO_NODIA)
 
             if not (stripped in variants):
                 variants[stripped] = {}
@@ -188,30 +191,56 @@ class ModelWrapper:
         train, target = self.augment(data)
 
         models = {}
+
+        """
         params = [
-            {'activation': 'tanh', 'alpha': 0.01, 'hidden_layer_sizes': (50, 100, 50), 'learning_rate': 'constant', 'solver': 'adam'},
-            {'activation': 'relu', 'alpha': 0.01, 'hidden_layer_sizes': (175, 75, 50), 'learning_rate': 'constant', 'solver': 'adam'},
-            {'activation': 'relu', 'alpha': 0.01, 'hidden_layer_sizes': (175, 75, 50), 'learning_rate': 'constant', 'solver': 'adam'},
-            {'activation': 'tanh', 'alpha': 0.01, 'hidden_layer_sizes': (50, 100, 50), 'learning_rate': 'constant', 'solver': 'adam'},
-            {'activation': 'tanh', 'alpha': 0.01, 'hidden_layer_sizes': (50, 100, 50), 'learning_rate': 'constant', 'solver': 'adam'},
-            {'activation': 'relu', 'alpha': 0.01, 'hidden_layer_sizes': (175, 75, 50), 'learning_rate': 'constant', 'solver': 'adam'},
-            {'activation': 'relu', 'alpha': 0.01, 'hidden_layer_sizes': (175, 75, 50), 'learning_rate': 'constant', 'solver': 'adam'},
-            {'activation': 'relu', 'alpha': 0.01, 'hidden_layer_sizes': (175, 75, 50), 'learning_rate': 'constant', 'solver': 'adam'},
-            {'activation': 'relu', 'alpha': 0.01, 'hidden_layer_sizes': (175, 75, 50), 'learning_rate': 'constant', 'solver': 'adam'},
-            {'activation': 'relu', 'alpha': 0.01, 'hidden_layer_sizes': (175, 75, 50), 'learning_rate': 'constant', 'solver': 'adam'},
-            {'activation': 'relu', 'alpha': 0.01, 'hidden_layer_sizes': (175, 75, 50), 'learning_rate': 'constant', 'solver': 'adam'},
-            {'activation': 'relu', 'alpha': 0.01, 'hidden_layer_sizes': (175, 75, 50), 'learning_rate': 'constant', 'solver': 'adam'},
-            {'activation': 'relu', 'alpha': 0.01, 'hidden_layer_sizes': (175, 75, 50), 'learning_rate': 'constant', 'solver': 'adam'}
+            {'activation': ['tanh'], 'alpha': [0.0001, 0.1, 0.15, 1, 100], 'hidden_layer_sizes': [(50, 100, 50)], 'learning_rate': ['adaptive'], 'solver': ['adam']},
+            {'activation': ['relu'], 'alpha': [0.0001, 0.1, 0.15, 1, 100], 'hidden_layer_sizes': [(175, 75, 50)], 'learning_rate': ['adaptive'], 'solver': ['adam']},
+            {'activation': ['relu'], 'alpha': [0.0001, 0.1, 0.15, 1, 100], 'hidden_layer_sizes': [(175, 75, 50)], 'learning_rate': ['adaptive'], 'solver': ['adam']},
+            {'activation': ['tanh'], 'alpha': [0.0001, 0.1, 0.15, 1, 100], 'hidden_layer_sizes': [(50, 100, 50)], 'learning_rate': ['adaptive'], 'solver': ['adam']},
+            {'activation': ['tanh'], 'alpha': [0.0001, 0.1, 0.15, 1, 100], 'hidden_layer_sizes': [(50, 100, 50)], 'learning_rate': ['adaptive'], 'solver': ['adam']},
+            {'activation': ['relu'], 'alpha': [0.0001, 0.1, 0.15, 1, 100], 'hidden_layer_sizes': [(175, 75, 50)], 'learning_rate': ['adaptive'], 'solver': ['adam']},
+            {'activation': ['relu'], 'alpha': [0.0001, 0.1, 0.15, 1, 100], 'hidden_layer_sizes': [(175, 75, 50)], 'learning_rate': ['adaptive'], 'solver': ['adam']},
+            {'activation': ['relu'], 'alpha': [0.0001, 0.1, 0.15, 1, 100], 'hidden_layer_sizes': [(175, 75, 50)], 'learning_rate': ['adaptive'], 'solver': ['adam']},
+            {'activation': ['relu'], 'alpha': [0.0001, 0.1, 0.15, 1, 100], 'hidden_layer_sizes': [(175, 75, 50)], 'learning_rate': ['adaptive'], 'solver': ['adam']},
+            {'activation': ['relu'], 'alpha': [0.0001, 0.1, 0.15, 1, 100], 'hidden_layer_sizes': [(175, 75, 50)], 'learning_rate': ['adaptive'], 'solver': ['adam']},
+            {'activation': ['relu'], 'alpha': [0.0001, 0.1, 0.15, 1, 100], 'hidden_layer_sizes': [(175, 75, 50)], 'learning_rate': ['adaptive'], 'solver': ['adam']},
+            {'activation': ['relu'], 'alpha': [0.0001, 0.1, 0.15, 1, 100], 'hidden_layer_sizes': [(175, 75, 50)], 'learning_rate': ['adaptive'], 'solver': ['adam']},
+            {'activation': ['relu'], 'alpha': [0.0001, 0.1, 0.15, 1, 100], 'hidden_layer_sizes': [(175, 75, 50)], 'learning_rate': ['adaptive'], 'solver': ['adam']}
         ]
+        """
 
-        fast_params = [0.01, 0.01, 0.1, 0.01, 0.01, 0.01, 0.1, 0.1, 0.1, 0.01, 0.1, 0.15, 0.15]
-
+        params = [
+            {'activation': 'relu', 'alpha': 0.01, 'hidden_layer_sizes': (175, 75, 50), 'learning_rate': 'adaptive',
+             'solver': 'adam'},
+            {'activation': 'relu', 'alpha': 0.15, 'hidden_layer_sizes': (175, 75, 50), 'learning_rate': 'adaptive',
+             'solver': 'adam'},
+            {'activation': 'relu', 'alpha': 0.01, 'hidden_layer_sizes': (175, 75, 50), 'learning_rate': 'adaptive',
+             'solver': 'adam'},
+            {'activation': 'relu', 'alpha': 0.01, 'hidden_layer_sizes': (100, 75, 50), 'learning_rate': 'adaptive',
+             'solver': 'adam'},
+            {'activation': 'relu', 'alpha': 0.01, 'hidden_layer_sizes': (175, 75, 50,), 'learning_rate': 'adaptive',
+             'solver': 'adam'},
+            {'activation': 'relu', 'alpha': 0.01, 'hidden_layer_sizes': (175, 75, 50), 'learning_rate': 'adaptive',
+             'solver': 'adam'},
+            {'activation': 'relu', 'alpha': 0.01, 'hidden_layer_sizes': (175, 75, 50), 'learning_rate': 'adaptive',
+             'solver': 'adam'},
+            {'activation': 'relu', 'alpha': 0.15, 'hidden_layer_sizes': (175, 75, 50), 'learning_rate': 'adaptive',
+             'solver': 'adam'},
+            {'activation': 'relu', 'alpha': 0.1, 'hidden_layer_sizes': (175, 75, 50), 'learning_rate': 'adaptive',
+             'solver': 'adam'},
+            {'activation': 'relu', 'alpha': 0.01, 'hidden_layer_sizes': (175, 75, 50), 'learning_rate': 'adaptive',
+             'solver': 'adam'},
+            {'activation': 'relu', 'alpha': 0.01, 'hidden_layer_sizes': (175, 75, 50), 'learning_rate': 'adaptive',
+             'solver': 'adam'},
+            {'activation': 'relu', 'alpha': 1, 'hidden_layer_sizes': (175, 75, 50), 'learning_rate': 'adaptive',
+             'solver': 'adam'},
+            {'activation': 'relu', 'alpha': 0.1, 'hidden_layer_sizes': (175, 75, 50), 'learning_rate': 'adaptive',
+             'solver': 'adam'}
+        ]
 
         for i in range(0, len(model_names)):
             letter = model_names[i]
-            """
-            TODO: GridSearch kvuli alpha - hodnoty [0.0001, 0.01, 0.1, 0.15, 1, 100]
-            """
 
             """
             A:
@@ -219,9 +248,9 @@ class ModelWrapper:
             Parameters: {'activation': 'tanh', 'alpha': 0.01, 'hidden_layer_sizes': (50, 100, 50), 'learning_rate': 'adaptive', 'solver': 'adam'}
             
             C:
-            Mean validation score: 0.984 (std: 0.001)
-            Parameters: {'activation': 'relu', 'alpha': 0.01, 'hidden_layer_sizes': (175, 75, 50), 'learning_rate': 'adaptive', 'solver': 'adam'}
-            
+            Mean validation score: 0.987 (std: 0.001)
+            Parameters: {'activation': 'relu', 'alpha': 0.15, 'hidden_layer_sizes': (175, 75, 50), 'learning_rate': 'constant', 'solver': 'adam'}
+
             D:
             Mean validation score: 0.999 (std: 0.000)
             Parameters: {'activation': 'relu', 'alpha': 0.01, 'hidden_layer_sizes': (175, 75, 50), 'learning_rate': 'adaptive', 'solver': 'adam'}
@@ -243,13 +272,13 @@ class ModelWrapper:
             Parameters: {'activation': 'relu', 'alpha': 0.01, 'hidden_layer_sizes': (175, 75, 50), 'learning_rate': 'adaptive', 'solver': 'adam'}
             
             R:
-            Mean validation score: 0.989 (std: 0.001)
-            Parameters: {'activation': 'relu', 'alpha': 0.01, 'hidden_layer_sizes': (175, 75, 50), 'learning_rate': 'adaptive', 'solver': 'adam'}
-            
+            Mean validation score: 0.990 (std: 0.001)
+            Parameters: {'activation': 'relu', 'alpha': 0.15, 'hidden_layer_sizes': (175, 75, 50), 'learning_rate': 'constant', 'solver': 'adam'}
+
             S:
-            Mean validation score: 0.981 (std: 0.000)
-            Parameters: {'activation': 'relu', 'alpha': 0.01, 'hidden_layer_sizes': (175, 75, 50), 'learning_rate': 'adaptive', 'solver': 'adam'}
-            
+            Mean validation score: 0.983 (std: 0.001)
+            Parameters: {'activation': 'relu', 'alpha': 0.1, 'hidden_layer_sizes': (175, 75, 50), 'learning_rate': 'constant', 'solver': 'adam'}
+
             T:
             Mean validation score: 0.998 (std: 0.000)
             Parameters: {'activation': 'relu', 'alpha': 0.01, 'hidden_layer_sizes': (175, 75, 50), 'learning_rate': 'adaptive', 'solver': 'adam'}
@@ -259,18 +288,18 @@ class ModelWrapper:
             Parameters: {'activation': 'relu', 'alpha': 0.01, 'hidden_layer_sizes': (175, 75, 50), 'learning_rate': 'adaptive', 'solver': 'adam'}
             
             Y:
-            Mean validation score: 0.956 (std: 0.002)
-            Parameters: {'activation': 'relu', 'alpha': 0.01, 'hidden_layer_sizes': (175, 75, 50), 'learning_rate': 'adaptive', 'solver': 'adam'}
-            
+            Mean validation score: 0.961 (std: 0.001)
+            Parameters: {'activation': 'relu', 'alpha': 1, 'hidden_layer_sizes': (175, 75, 50), 'learning_rate': 'constant', 'solver': 'adam'}
+
             Z:
-            Mean validation score: 0.976 (std: 0.003)
-            Parameters: {'activation': 'relu', 'alpha': 0.01, 'hidden_layer_sizes': (175, 75, 50), 'learning_rate': 'adaptive', 'solver': 'adam'}
+            Mean validation score: 0.980 (std: 0.003)
+            Parameters: {'activation': 'relu', 'alpha': 0.1, 'hidden_layer_sizes': (175, 75, 50), 'learning_rate': 'constant', 'solver': 'adam'}
 
             parameter_space = {
                 'hidden_layer_sizes': [(50, 100, 50), (175, 75, 50)],
                 'activation': ['tanh', 'relu'],
                 'solver': ['sgd', 'adam'],
-                #'alpha': [0.0001, 0.01, 1, 100],
+                #'alpha': [0.0001, 0.01, 0.1, 0.15, 1, 100],
                 'alpha': [0.01],
                 'learning_rate': ['constant', 'adaptive'],
             }
@@ -281,18 +310,17 @@ class ModelWrapper:
             enc.fit(mlp_data)
             mlp_data_encoded = enc.transform(mlp_data)
 
-            mlp = sklearn.neural_network.MLPClassifier(alpha=fast_params[i])
+            # mlp = sklearn.neural_network.MLPClassifier(alpha=fast_params[i])
 
-            """
-            SLOW PARAMS: Used for training after the grid search is done.
-            
+            # SLOW PARAMS: Used for training after the grid search is done.
+
             mlp = sklearn.neural_network.MLPClassifier(random_state=args.seed, max_iter=100)
             mlp.set_params(**params[i])
+
             """
-            """
-            GRIDSEARCH: Used with paramter_space to find the best params.
+            #GRIDSEARCH: Used with parameter_space to find the best params.
             
-            mlp_search = sklearn.model_selection.GridSearchCV(mlp, parameter_space, n_jobs=2, cv=3)
+            mlp_search = sklearn.model_selection.GridSearchCV(mlp, params[i], n_jobs=2, cv=3)
             models[letter] = mlp_search.fit(mlp_data_encoded, np.array(target[letter]))
 
             report(mlp_search.cv_results_)
@@ -306,8 +334,6 @@ class ModelWrapper:
         self.create_dictionary(data.lower())
 
     def predict(self, data):
-        dataset = Dataset()
-
         data_cpy = data
         simple_data = self.simplify(data_cpy)
 
@@ -329,13 +355,11 @@ class ModelWrapper:
         simple_data = self.fill + simple_data + self.fill
         result = []
 
-        # Init
         for i in range(len(model_names)):
             letter = model_names[i]
             mods[letter] = []
             indices[letter] = []
 
-        # Go through the text and prepare the features for predicting
         for i in range(self.left_right_offset, len(simple_data) - self.left_right_offset):
             if simple_data[i] in model_names:
                 letter = simple_data[i]
@@ -350,7 +374,6 @@ class ModelWrapper:
 
             result.append(simple_data[i])
 
-        # Replace letters with predicted
         for i in range(len(model_names)):
             letter = model_names[i]
             model = models[letter]
@@ -381,7 +404,7 @@ class ModelWrapper:
                 is_word = False
 
                 if not (current_word in words):
-                    no_dia_curr = current_word.translate(dataset.DIA_TO_NODIA)
+                    no_dia_curr = current_word.translate(DIA_TO_NODIA)
 
                     if no_dia_curr in dic:
                         new_word = dic[no_dia_curr]
@@ -436,14 +459,17 @@ def main(args):
 
     else:
         # Use the model and return test set predictions, as either a Python list or a NumPy array.
-        #test = Dataset(args.predict)
+        test = Dataset(args.predict)
 
         with lzma.open(args.model_path, "rb") as model_file:
             model = pickle.load(model_file)
 
         # TODO: Generate `predictions` with the test set predictions. Specifically,
         # produce a diacritized `str` with exactly the same number of words as `test.data`.
-        file_list = ("train_data.txt", "clanek_noviny.txt", "reportaz_noviny.txt", "uvaha_sloh.txt", "clanek_internet.txt", "proza.txt")
+        """
+        file_list = (
+        "train_data.txt", "clanek_noviny.txt", "reportaz_noviny.txt", "uvaha_sloh.txt", "clanek_internet.txt",
+        "proza.txt")
         for filename in file_list:
             filename = "tests/" + filename
             test = split(filename)
@@ -454,7 +480,9 @@ def main(args):
             print(filename, ":\t\t", accuracy(test[1], predictions))
 
         return predictions
+        """
 
+        return model.predict(test.data)
 
 if __name__ == "__main__":
     args = parser.parse_args([] if "__file__" not in globals() else None)
