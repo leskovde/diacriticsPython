@@ -153,7 +153,7 @@ class ModelWrapper:
         # data = data + self.scramble_sentences(data)
         # data += self.dict_as_lines(self.prepare_assignment_dictionary(Dictionary()))
 
-        self.calculate_words_frequency(Dictionary().variants, data)
+        data = self.calculate_words_frequency_remove_wrong_variants(Dictionary().variants, data)
 
         no_dia_data = self.simplify(
             self.fill + data.translate(DIA_TO_NODIA) + self.fill)
@@ -204,25 +204,44 @@ class ModelWrapper:
 
         return '\n'.join(lines)
 
-    def calculate_words_frequency(self, variants, text):
-        lines_parts = [line.strip().split() for line in text.splitlines()]
-
+    def calculate_words_frequency_remove_wrong_variants(self, variants, text):
+        # prepare storage for frequency
         for index, variants_list in variants.items():
-            self.variants_frequency[index.lower()] = {word.lower(): 0 for word in variants_list}
+            dict_of_variants = {word.lower(): 0 for word in variants_list}
+            if index.lower() not in self.variants_frequency.keys():
+                self.variants_frequency[index.lower()] = dict_of_variants
+            else:
+                for var in dict_of_variants.keys():
+                    if var not in self.variants_frequency[index.lower()]:
+                        self.variants_frequency[index.lower()][var] = 0
 
-        for line in lines_parts:
-            only_words = [part for part in line if part.isalpha()]
+        lines_final = []
+
+        for line in text.splitlines():
+
+            line_parts = line.strip().split()
+            only_words = [part for part in line_parts if part.isalpha()]
 
             for word in only_words:
                 word_lowercase = word.lower()
                 word_nodia = word_lowercase.translate(DIA_TO_NODIA)
 
+                if word_lowercase == "češky":
+                    print("stop")
+
                 if word_nodia in self.variants_frequency.keys():
-                    if word_lowercase in self.variants_frequency[word_nodia]:
+                    if word_lowercase in self.variants_frequency[word_nodia].keys():
                         self.variants_frequency[word_nodia][word_lowercase] += 1
+                    else:
+                        print(word_lowercase)
+                        continue
+
+            lines_final.append(line)
 
         with lzma.open("variants_frequency", "wb") as model_file:
             pickle.dump(self.variants_frequency, model_file)
+
+        return '\n'.join(lines_final)
 
     def get_most_frequent_variant(self, lower_word):
         word_nodia = lower_word.translate(DIA_TO_NODIA)
