@@ -102,7 +102,7 @@ class ModelWrapper:
     left_right_offset = 8
     separators = [" ", "\n", ",", "."]
 
-    one_hot_values = [chr(i) for i in range(97, 123)] + separators
+    one_hot_values = [chr(i) for i in range(97, 123)] + separators + [chr(0)]
     one_hot_indexed = sorted([ord(i) for i in one_hot_values])
 
     one_hot_list = []
@@ -175,7 +175,30 @@ class ModelWrapper:
                         feature_vector.append(ord(no_dia_data[j]))
                 train[no_dia_data[i]].append(feature_vector)
                 target[no_dia_data[i]].append(ord(data[i]))
+
+        for i in range((self.left_right_offset - 1), len(no_dia_data)):
+            if no_dia_data[i] in model_names:
+
+                feature_vector = [0]
+                for j in range(-(self.left_right_offset - 1) + i, (self.left_right_offset - 1) + 1 + i):
+                    if j != i:
+                        feature_vector.append(ord(no_dia_data[j]))
+                train[no_dia_data[i]].append(feature_vector + [0])
+                target[no_dia_data[i]].append(ord(data[i]))
+                # print(feature_vector + [0])
+
+        for i in range((self.left_right_offset - 2), len(no_dia_data)):
+            if no_dia_data[i] in model_names:
+
+                feature_vector = [0, 0]
+                for j in range(-(self.left_right_offset - 2) + i, (self.left_right_offset - 2) + 1 + i):
+                    if j != i:
+                        feature_vector.append(ord(no_dia_data[j]))
+                train[no_dia_data[i]].append(feature_vector + [0, 0])
+                target[no_dia_data[i]].append(ord(data[i]))
+
         return train, target
+
 
     @staticmethod
     def lf(data):
@@ -398,7 +421,7 @@ class ModelWrapper:
             # SLOW PARAMS: Used for training after the grid search is done.
 
             mlp = sklearn.neural_network.MLPClassifier(random_state=args.seed, max_iter=100)
-            #mlp.set_params(**params[i])
+            mlp.set_params(**params[i])
 
             """
             #GRIDSEARCH: Used with parameter_space to find the best params.
