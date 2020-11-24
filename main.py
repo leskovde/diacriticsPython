@@ -6,18 +6,17 @@
 
 import argparse
 import lzma
-import pickle
 import os
-import urllib.request
+import pickle
 import sys
+import urllib.request
 
 import numpy as np
-
 import sklearn.datasets
+import sklearn.linear_model
 import sklearn.metrics
 import sklearn.model_selection
 import sklearn.neural_network
-import sklearn.linear_model
 import sklearn.pipeline
 import sklearn.preprocessing
 
@@ -55,6 +54,7 @@ class Dataset:
             self.target = dataset_file.read()
         self.data = self.target.translate(self.DIA_TO_NODIA)
 
+
 class Dictionary:
     def __init__(self,
                  name="fiction-dictionary.txt",
@@ -62,7 +62,8 @@ class Dictionary:
         if not os.path.exists(name):
             print("Downloading {}...".format(name), file=sys.stderr)
             urllib.request.urlretrieve(url + name, filename=name)
-            urllib.request.urlretrieve(url + name.replace(".txt", ".LICENSE"), filename=name.replace(".txt", ".LICENSE"))
+            urllib.request.urlretrieve(url + name.replace(".txt", ".LICENSE"),
+                                       filename=name.replace(".txt", ".LICENSE"))
 
         # Load the dictionary to `variants`
         self.variants = {}
@@ -148,7 +149,7 @@ class ModelWrapper:
 
     def augment(self, data):
         data = data + self.flip_sentences(data)
-        #data = data + self.scramble_sentences(data)
+        # data = data + self.scramble_sentences(data)
         no_dia_data = self.simplify(
             self.fill + data.translate(DIA_TO_NODIA) + self.fill)
 
@@ -366,8 +367,8 @@ class ModelWrapper:
             models[letter] = mlp.fit(mlp_data_encoded, np.array(target[letter]))
 
             models[letter]._optimizer = None
-            #for i in range(len(models[letter].coefs_)): models[letter].coefs_[i] = models[letter].coefs_[i].astype(np.float16)
-            #for i in range(len(models[letter].intercepts_)): models[letter].intercepts_[i] = models[letter].intercepts_[i].astype(np.float16)
+            # for i in range(len(models[letter].coefs_)): models[letter].coefs_[i] = models[letter].coefs_[i].astype(np.float16)
+            # for i in range(len(models[letter].intercepts_)): models[letter].intercepts_[i] = models[letter].intercepts_[i].astype(np.float16)
 
             with lzma.open("model_" + model_names[i], "wb") as model_file:
                 pickle.dump(models[letter], model_file)
@@ -524,6 +525,7 @@ def main(args):
         """
 
         return model.predict(test.data)
+
 
 if __name__ == "__main__":
     args = parser.parse_args([] if "__file__" not in globals() else None)
