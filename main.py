@@ -176,6 +176,18 @@ class ModelWrapper:
     def lf(data):
         return [item for sublist in data for item in sublist]
 
+    @staticmethod
+    def prepare_assignment_dictionary(dictionary_object: Dictionary) -> dict:
+        variants = dictionary_object.variants
+        variants_lowercase = dict()
+
+        for word, word_variants in variants.items():
+            word_lowercase = word.lower()
+            word_variants_lowercase = [w.lower() for w in word_variants]
+            variants_lowercase[word_lowercase] = word_variants_lowercase
+
+        return variants_lowercase
+
     def create_dictionary(self, data: str):
         data = [line.rstrip("\n").split() for line in data.splitlines()]
         data = self.lf(data)
@@ -381,11 +393,15 @@ class ModelWrapper:
 
         models = {}
 
+        """
         with lzma.open("words_file", "rb") as model_file:
             words = pickle.load(model_file)
 
         with lzma.open("dictionary_file", "rb") as model_file:
             dic = pickle.load(model_file)
+        """
+
+        dic = self.prepare_assignment_dictionary(Dictionary())
 
         for i in range(0, len(model_names)):
             with lzma.open("model_" + model_names[i], "rb") as model_file:
@@ -445,6 +461,13 @@ class ModelWrapper:
             elif is_word & (not result[i].isalpha()):
                 is_word = False
 
+                no_dia_curr = current_word.translate(DIA_TO_NODIA)
+                if no_dia_curr in dic.keys():  # this word is inside of dictionary
+                    if current_word not in dic[no_dia_curr]:  # but this variant does not exist
+                        for j in range(-len(current_word), 0):
+                            result[i + j] = dic[no_dia_curr][0][len(current_word) + j]  # use first variant from dic
+
+                """
                 if not (current_word in words):
                     no_dia_curr = current_word.translate(DIA_TO_NODIA)
 
@@ -452,7 +475,8 @@ class ModelWrapper:
                         new_word = dic[no_dia_curr]
 
                         for j in range(-len(current_word), 0):
-                            result[i + j] = new_word[len(current_word) + j]
+                            result[i + j] = new_word[len(current_word) + j]      
+                """
 
                 current_word = ""
 
@@ -499,19 +523,21 @@ def main(args):
         with lzma.open(args.model_path, "wb") as model_file:
             pickle.dump(model, model_file)
 
-    else:
-        # Use the model and return test set predictions, as either a Python list or a NumPy array.
+    elif args.recodex:
         test = Dataset(args.predict)
 
         with lzma.open(args.model_path, "rb") as model_file:
             model = pickle.load(model_file)
 
-        # TODO: Generate `predictions` with the test set predictions. Specifically,
-        # produce a diacritized `str` with exactly the same number of words as `test.data`.
-        """
+        return model.predict(test.data)
+
+    else:
+        with lzma.open(args.model_path, "rb") as model_file:
+            model = pickle.load(model_file)
+
         file_list = (
-        "train_data.txt", "clanek_noviny.txt", "reportaz_noviny.txt", "uvaha_sloh.txt", "clanek_internet.txt",
-        "proza.txt")
+            "train_data.txt", "clanek_noviny.txt", "reportaz_noviny.txt", "uvaha_sloh.txt", "clanek_internet.txt",
+            "proza.txt")
         for filename in file_list:
             filename = "tests/" + filename
             test = split(filename)
@@ -522,9 +548,6 @@ def main(args):
             print(filename, ":\t\t", accuracy(test[1], predictions))
 
         return predictions
-        """
-
-        return model.predict(test.data)
 
 
 if __name__ == "__main__":
