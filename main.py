@@ -480,8 +480,8 @@ class ModelWrapper:
                 if no_dia_curr in self.variants_frequency.keys():  # this word is inside of dictionary
                     if current_word not in self.variants_frequency[
                         no_dia_curr].keys():  # but this variant does not exist
+                        best_word = self.get_most_frequent_variant(current_word)
                         for j in range(-len(current_word), 0):
-                            best_word = self.get_most_frequent_variant(current_word)
                             result[i + j] = best_word[len(current_word) + j]  # use first variant from dic
 
                 """
