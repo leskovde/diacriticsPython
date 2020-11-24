@@ -113,6 +113,7 @@ class ModelWrapper:
 
     def __init__(self):
         self.dictionary = {}
+        self.variants_frequency = dict()
 
     @staticmethod
     def scramble_sentences(data):
@@ -148,8 +149,12 @@ class ModelWrapper:
         return "\n".join(data_added)
 
     def augment(self, data):
-        data = data + self.flip_sentences(data)
+        # data = data + self.flip_sentences(data)
         # data = data + self.scramble_sentences(data)
+        # data += self.dict_as_lines(self.prepare_assignment_dictionary(Dictionary()))
+
+        self.calculate_words_frequency(Dictionary().variants, data)
+
         no_dia_data = self.simplify(
             self.fill + data.translate(DIA_TO_NODIA) + self.fill)
 
@@ -188,42 +193,50 @@ class ModelWrapper:
 
         return variants_lowercase
 
-    def create_dictionary(self, data: str):
-        data = [line.rstrip("\n").split() for line in data.splitlines()]
-        data = self.lf(data)
+    @staticmethod
+    def dict_as_lines(dictionary: dict) -> str:
+        lines = []
 
-        unique_words = set()
-        variants = {}
+        for index, items in dictionary.items():
+            # line = [index]
+            # line += [word for word in items if word != index]
+            lines.append(' '.join(items))
 
-        for word in data:
-            if not word.isalnum():
-                continue
+        return '\n'.join(lines)
 
-            unique_words.add(word)
-            stripped = word.translate(DIA_TO_NODIA)
+    def calculate_words_frequency(self, variants, text):
+        lines_parts = [line.strip().split() for line in text.splitlines()]
 
-            if not (stripped in variants):
-                variants[stripped] = {}
-            if word in variants[stripped]:
-                variants[stripped][word] += 1
-            else:
-                variants[stripped][word] = 1
+        for index, variants_list in variants.items():
+            self.variants_frequency[index.lower()] = {word.lower(): 0 for word in variants_list}
 
-        dic = {}
-        for stripped in variants:
-            right_side = []
+        for line in lines_parts:
+            only_words = [part for part in line if part.isalpha()]
 
-            for left_side in variants[stripped]:
-                right_side.append((left_side, variants[stripped][left_side]))
+            for word in only_words:
+                word_lowercase = word.lower()
+                word_nodia = word_lowercase.translate(DIA_TO_NODIA)
 
-            right_side.sort(key=lambda x: x[1], reverse=True)
-            dic[stripped] = right_side[0][0]
+                if word_nodia in self.variants_frequency.keys():
+                    if word_lowercase in self.variants_frequency[word_nodia]:
+                        self.variants_frequency[word_nodia][word_lowercase] += 1
 
-        with lzma.open("words_file", "wb") as model_file:
-            pickle.dump(unique_words, model_file)
+        with lzma.open("variants_frequency", "wb") as model_file:
+            pickle.dump(self.variants_frequency, model_file)
 
-        with lzma.open("dictionary_file", "wb") as model_file:
-            pickle.dump(dic, model_file)
+    def get_most_frequent_variant(self, lower_word):
+        word_nodia = lower_word.translate(DIA_TO_NODIA)
+
+        if word_nodia not in self.variants_frequency.keys() or lower_word in self.variants_frequency[word_nodia]:
+            return lower_word
+
+        max_key = max_val = None
+        for key, val in self.variants_frequency[word_nodia].items():
+            if not max_val or max_val < val:
+                max_key = key
+                max_val = val
+
+        return max_key
 
     def simplify(self, data: str):
         output = []
@@ -290,6 +303,7 @@ class ModelWrapper:
         ]
 
         for i in range(0, len(model_names)):
+            print("Training", model_names[i])
             letter = model_names[i]
 
             """
@@ -365,7 +379,7 @@ class ModelWrapper:
             # SLOW PARAMS: Used for training after the grid search is done.
 
             mlp = sklearn.neural_network.MLPClassifier(random_state=args.seed, max_iter=100)
-            mlp.set_params(**params[i])
+            #mlp.set_params(**params[i])
 
             """
             #GRIDSEARCH: Used with parameter_space to find the best params.
@@ -385,13 +399,16 @@ class ModelWrapper:
             with lzma.open("model_" + model_names[i], "wb") as model_file:
                 pickle.dump(models[letter], model_file)
 
-        self.create_dictionary(data.lower())
+        #self.create_dictionary(data.lower())
 
     def predict(self, data):
         data_cpy = data
         simple_data = self.simplify(data_cpy)
 
         models = {}
+
+        with lzma.open("variants_frequency", "rb") as model_file:
+            self.variants_frequency = pickle.load(model_file)
 
         """
         with lzma.open("words_file", "rb") as model_file:
@@ -400,8 +417,6 @@ class ModelWrapper:
         with lzma.open("dictionary_file", "rb") as model_file:
             dic = pickle.load(model_file)
         """
-
-        dic = self.prepare_assignment_dictionary(Dictionary())
 
         for i in range(0, len(model_names)):
             with lzma.open("model_" + model_names[i], "rb") as model_file:
@@ -462,10 +477,12 @@ class ModelWrapper:
                 is_word = False
 
                 no_dia_curr = current_word.translate(DIA_TO_NODIA)
-                if no_dia_curr in dic.keys():  # this word is inside of dictionary
-                    if current_word not in dic[no_dia_curr]:  # but this variant does not exist
+                if no_dia_curr in self.variants_frequency.keys():  # this word is inside of dictionary
+                    if current_word not in self.variants_frequency[
+                        no_dia_curr].keys():  # but this variant does not exist
                         for j in range(-len(current_word), 0):
-                            result[i + j] = dic[no_dia_curr][0][len(current_word) + j]  # use first variant from dic
+                            best_word = self.get_most_frequent_variant(current_word)
+                            result[i + j] = best_word[len(current_word) + j]  # use first variant from dic
 
                 """
                 if not (current_word in words):

@@ -1,6 +1,0 @@
-tests/train_data.txt :           0.9992798932134326
-tests/clanek_noviny.txt :                0.8165137614678899
-tests/reportaz_noviny.txt :              0.8345864661654135
-tests/uvaha_sloh.txt :           0.897998093422307
-tests/clanek_internet.txt :              0.7684964200477327
-tests/proza.txt :                0.9011553273427471
