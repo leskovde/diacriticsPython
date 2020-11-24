@@ -99,7 +99,7 @@ model_names = "acdeinorstuyz"
 
 
 class ModelWrapper:
-    left_right_offset = 8
+    left_right_offset = 11
     separators = [" ", "\n", ",", "."]
 
     one_hot_values = [chr(i) for i in range(97, 123)] + separators + [chr(0)]
@@ -166,36 +166,18 @@ class ModelWrapper:
             train[model_names[i]] = []
             target[model_names[i]] = []
 
-        for i in range(self.left_right_offset, len(no_dia_data)):
-            if no_dia_data[i] in model_names:
+        for frame_size in range(5, 12):
+            empty = [0 for _ in range(11 - frame_size)]
 
-                feature_vector = []
-                for j in range(-self.left_right_offset + i, self.left_right_offset + 1 + i):
-                    if j != i:
-                        feature_vector.append(ord(no_dia_data[j]))
-                train[no_dia_data[i]].append(feature_vector)
-                target[no_dia_data[i]].append(ord(data[i]))
+            for i in range(frame_size, len(no_dia_data)):
+                if no_dia_data[i] in model_names:
 
-        for i in range((self.left_right_offset - 1), len(no_dia_data)):
-            if no_dia_data[i] in model_names:
-
-                feature_vector = [0]
-                for j in range(-(self.left_right_offset - 1) + i, (self.left_right_offset - 1) + 1 + i):
-                    if j != i:
-                        feature_vector.append(ord(no_dia_data[j]))
-                train[no_dia_data[i]].append(feature_vector + [0])
-                target[no_dia_data[i]].append(ord(data[i]))
-                # print(feature_vector + [0])
-
-        for i in range((self.left_right_offset - 2), len(no_dia_data)):
-            if no_dia_data[i] in model_names:
-
-                feature_vector = [0, 0]
-                for j in range(-(self.left_right_offset - 2) + i, (self.left_right_offset - 2) + 1 + i):
-                    if j != i:
-                        feature_vector.append(ord(no_dia_data[j]))
-                train[no_dia_data[i]].append(feature_vector + [0, 0])
-                target[no_dia_data[i]].append(ord(data[i]))
+                    feature_vector = []
+                    for j in range(-frame_size + i, frame_size + 1 + i):
+                        if j != i:
+                            feature_vector.append(ord(no_dia_data[j]))
+                    train[no_dia_data[i]].append(empty + feature_vector + empty)
+                    target[no_dia_data[i]].append(ord(data[i]))
 
         return train, target
 
@@ -435,8 +417,10 @@ class ModelWrapper:
             models[letter] = mlp.fit(mlp_data_encoded, np.array(target[letter]))
 
             models[letter]._optimizer = None
-            # for i in range(len(models[letter].coefs_)): models[letter].coefs_[i] = models[letter].coefs_[i].astype(np.float16)
-            # for i in range(len(models[letter].intercepts_)): models[letter].intercepts_[i] = models[letter].intercepts_[i].astype(np.float16)
+            for j in range(len(models[letter].coefs_)): models[letter].coefs_[j] = models[letter].coefs_[j].astype(
+                np.float16)
+            for j in range(len(models[letter].intercepts_)): models[letter].intercepts_[j] = models[letter].intercepts_[
+                j].astype(np.float16)
 
             with lzma.open("model_" + model_names[i], "wb") as model_file:
                 pickle.dump(models[letter], model_file)
